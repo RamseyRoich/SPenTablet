@@ -55,7 +55,7 @@ Turn a Samsung Galaxy S26 Ultra + S Pen into a pressure-sensitive drawing tablet
 
 | Decision | Choice | Why |
 |---|---|---|
-| Phone language | **Kotlin** | Android's main language. It's close to Java, which you may have seen in Minecraft modding. |
+| Phone language | **Kotlin** | Android's main language. It's close to Java. |
 | PC language | **C# (.NET 10)** with **WinForms** | Easy to read. Calling Windows APIs from it is simple, and a tray icon takes a few lines. |
 | Connection | **TCP over USB via `adb reverse`** | About 1–3 ms of delay. No root, no Wi-Fi setup, very reliable. ADB comes with Android Studio. |
 | Pen on Windows | **`CreateSyntheticPointerDevice` / `InjectSyntheticPointerInput`** | Built into Windows 10 (1809) and later. It creates a *real pen* that has pressure, hover, the barrel button and the eraser. **No driver, no signing.** Krita reads it through "Windows Ink". |
@@ -83,7 +83,7 @@ Steps 1–7 should take well under 10 ms.
    `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`.
 2. **.NET 10 SDK**: https://dotnet.microsoft.com/download
 3. An editor for the C# side. Pick **one**:
-   - **Visual Studio Community** (the purple one, easiest for beginners), with the ".NET desktop development" workload, **or**
+   - **Visual Studio Community**, with the ".NET desktop development" workload, **or**
    - **VS Code** with the "C# Dev Kit" extension.
 4. **Krita**: https://krita.org
 5. Optional but recommended: **Git**, so you can undo mistakes: https://git-scm.com
@@ -143,7 +143,7 @@ SPenTablet/
             └── AdbHelper.cs        ← finds adb.exe, runs "adb reverse"
 ```
 
-**Rule of thumb:** each file does one job. If you're unsure where something goes, ask "is this about *reading the pen*, *sending bytes*, *mapping*, or *talking to Windows*?"
+Each file does one job: reading the pen, sending bytes, mapping, or talking to Windows.
 
 ### Creating the projects
 
@@ -1332,7 +1332,7 @@ Settings → Bluetooth & devices → **Pen & Windows Ink**:
 
 ## 8. Milestones & how to test each one
 
-Do them in order. Each one should **work** before you start the next.
+Do them in order; each should work before you start the next.
 
 ### Milestone 1: Tools installed
 - [ ] Android Studio, .NET 10 SDK, Krita installed
@@ -1354,7 +1354,7 @@ Add `PenLink` on the phone and `Protocol`, `PenServer`, `AreaMapper`, `AdbHelper
 - [ ] Moving the pen moves the PC mouse cursor across the whole monitor
 - [ ] Unplug the cable: the phone says "Not connected". Plug it back in: it reconnects by itself within a few seconds.
 
-### Milestone 4: Real pen in Krita ⭐
+### Milestone 4: Real pen in Krita
 Swap in the real `PenInjector`.
 - [ ] Krita: brush strokes get thicker/darker with pressure
 - [ ] Hovering moves Krita's brush outline without painting
@@ -1363,7 +1363,7 @@ Swap in the real `PenInjector`.
 - [ ] If tilt works on your phone: use a tilt-sensitive brush. If leaning left makes it act like leaning right, flip the sign of `tx` in `tiltXY` (same for `ty`).
 - [ ] Side button: in Krita, map it to whatever you like (Settings → Configure Krita → Canvas Input Settings)
 
-**🎉 At this point you have a working drawing tablet.**
+At this point it works as a drawing tablet.
 
 ### Milestone 5: Comfort
 - [ ] Monitor selection and pressure presets in the tray menu (already in the code above)

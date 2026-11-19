@@ -13,24 +13,17 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.tan
 
-/**
- * Milestone 2: reads the S Pen and shows the numbers on screen.
- * Nothing is sent anywhere yet (onSample is optional).
- */
 class PadView(
     context: Context,
-    private val onSample: ((PenSample) -> Unit)? = null,
+    private val onSample: (PenSample) -> Unit,
 ) : View(context) {
 
-    var status: String = "Milestone 2: pen test (no PC connection yet)"
+    /** Text shown at the top of the pad (connection status). */
+    var status: String = "Starting…"
         set(value) { field = value; invalidate() }
 
     private var last: PenSample? = null
-    private var maxPressure = 0f
-    private var sawTilt = false
-    private var fingerIgnored = 0
-
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.LTGRAY; textSize = 42f }
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.GRAY; textSize = 42f }
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
 
     private val sendOutOfRange = Runnable {
@@ -40,16 +33,13 @@ class PadView(
 
     init {
         setBackgroundColor(Color.BLACK)
+        // Deliver pointer events (touch + hover) as soon as they happen.
         requestUnbufferedDispatch(InputDevice.SOURCE_CLASS_POINTER)
     }
 
     // ---- Pen touching the glass -------------------------------------------
     override fun onTouchEvent(e: MotionEvent): Boolean {
-        val p = penIndex(e)
-        if (p == null) { // finger or palm: ignore, but count it so you can see rejection working
-            if (e.actionMasked == MotionEvent.ACTION_DOWN) { fingerIgnored++; invalidate() }
-            return true
-        }
+        val p = penIndex(e) ?: return true // finger or palm: swallow it, do nothing
         removeCallbacks(sendOutOfRange)
         val lifted = when (e.actionMasked) {
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> true
@@ -68,23 +58,25 @@ class PadView(
                 removeCallbacks(sendOutOfRange)
                 emitAll(e, p, inContact = false)
             }
-            // HOVER_EXIT fires right before the tip touches down, so wait a moment.
             MotionEvent.ACTION_HOVER_EXIT -> postDelayed(sendOutOfRange, 80)
         }
         return true
     }
 
+    /** Index of the stylus pointer in this event, or null if there is none. */
     private fun penIndex(e: MotionEvent): Int? =
         (0 until e.pointerCount).firstOrNull {
             val t = e.getToolType(it)
             t == MotionEvent.TOOL_TYPE_STYLUS || t == MotionEvent.TOOL_TYPE_ERASER
         }
 
+    /** Send the batched (historical) samples first, then the current one. */
     private fun emitAll(e: MotionEvent, p: Int, inContact: Boolean) {
         for (k in 0 until e.historySize) emit(sampleAt(e, p, k, inContact))
         emit(sampleAt(e, p, -1, inContact))
     }
 
+    /** k = history index, or -1 for the event's current values. */
     private fun sampleAt(e: MotionEvent, p: Int, k: Int, inContact: Boolean): PenSample {
         val h = k >= 0
         val x = if (h) e.getHistoricalX(p, k) else e.getX(p)
@@ -110,9 +102,13 @@ class PadView(
         )
     }
 
-    /** Signs may need flipping; we check in Krita at Milestone 4. */
+    /**
+     * Android gives tilt as "angle away from straight up" + "which direction it leans".
+     * Windows wants "lean left/right" (tiltX) and "lean toward/away from you" (tiltY).
+     * NOTE: the signs may need flipping. Check in Krita during Milestone 4.
+     */
     private fun tiltXY(tilt: Float, orientation: Float): Pair<Int, Int> {
-        val t = tan(tilt.coerceIn(0f, 1.55f))
+        val t = tan(tilt.coerceIn(0f, 1.55f)) // 1.55 rad ≈ 89°, avoids infinity
         val tx = Math.toDegrees(atan(t * sin(orientation)).toDouble()).roundToInt()
         val ty = Math.toDegrees(atan(-t * cos(orientation)).toDouble()).roundToInt()
         return tx to ty
@@ -120,27 +116,21 @@ class PadView(
 
     private fun emit(s: PenSample) {
         last = s
-        if (s.pressure > maxPressure) maxPressure = s.pressure
-        if (s.tiltX != 0 || s.tiltY != 0) sawTilt = true
-        onSample?.invoke(s)
-        invalidate()
+        onSample(s)
+        invalidate() // redraw the debug info
     }
 
+    // ---- Debug display: status, numbers, and a dot under the pen -----------
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         canvas.drawText(status, 40f, 80f, textPaint)
-        canvas.drawText(
-            "max pressure seen: %.3f   tilt ever non-zero: %s   fingers ignored: %d".format(
-                maxPressure, if (sawTilt) "YES" else "no", fingerIgnored),
-            40f, 140f, textPaint)
         val s = last ?: return
-        val state = if (s.inContact) "TOUCH" else if (s.inRange) "hover" else "away"
-        canvas.drawText(
-            "x=%.3f  y=%.3f  pressure=%.3f  tilt=%d,%d  %s%s%s".format(
-                s.x, s.y, s.pressure, s.tiltX, s.tiltY, state,
-                if (s.barrel) "  [button]" else "",
-                if (s.eraser) "  [eraser]" else ""),
-            40f, 200f, textPaint)
+        val info = "x=%.3f  y=%.3f  pressure=%.3f  tilt=%d,%d  %s%s".format(
+            s.x, s.y, s.pressure, s.tiltX, s.tiltY,
+            if (s.inContact) "TOUCH" else if (s.inRange) "hover" else "away",
+            if (s.barrel) "  [button]" else "",
+        )
+        canvas.drawText(info, 40f, 140f, textPaint)
         if (s.inRange) canvas.drawCircle(s.x * width, s.y * height, 6f + 30f * s.pressure, dotPaint)
     }
 }

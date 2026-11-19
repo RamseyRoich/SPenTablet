@@ -109,7 +109,7 @@ class PadView(
      */
     private fun tiltXY(tilt: Float, orientation: Float): Pair<Int, Int> {
         val t = tan(tilt.coerceIn(0f, 1.55f)) // 1.55 rad ≈ 89°, avoids infinity
-        val tx = Math.toDegrees(atan(t * sin(orientation)).toDouble()).roundToInt()
+        val tx = Math.toDegrees(atan(-t * sin(orientation)).toDouble()).roundToInt()
         val ty = Math.toDegrees(atan(-t * cos(orientation)).toDouble()).roundToInt()
         return tx to ty
     }

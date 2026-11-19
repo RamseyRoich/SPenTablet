@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
@@ -35,6 +36,13 @@ class PadView(
         setBackgroundColor(Color.BLACK)
         // Deliver pointer events (touch + hover) as soon as they happen.
         requestUnbufferedDispatch(InputDevice.SOURCE_CLASS_POINTER)
+    }
+
+    // Ask Android not to take edge swipes anywhere on the pad, so pen input reaches every edge.
+    // (Android caps how much of the screen can be excluded, so the system may trim this.)
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        super.onLayout(changed, l, t, r, b)
+        systemGestureExclusionRects = listOf(Rect(0, 0, r - l, b - t))
     }
 
     // ---- Pen touching the glass -------------------------------------------

@@ -13,6 +13,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Draw under the camera cutout too, so the pad covers the whole screen.
+        window.attributes = window.attributes.apply {
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) // don't dim while drawing
 
         pad = PadView(this) { sample -> link.send(sample) }

@@ -31,6 +31,9 @@ internal sealed class TrayApp : ApplicationContext
         var keep = new ToolStripMenuItem("Keep aspect ratio") { Checked = _settings.KeepAspect, CheckOnClick = true };
         keep.CheckedChanged += (_, _) => { _settings.KeepAspect = keep.Checked; _mapper.SetKeepAspect(keep.Checked); _settings.Save(); };
         menu.Items.Add(keep);
+        var diag = new ToolStripMenuItem("Show diagnostics") { CheckOnClick = true };
+        diag.CheckedChanged += (_, _) => ToggleDiagnostics(diag.Checked);
+        menu.Items.Add(diag);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitThread());
 
@@ -51,6 +54,45 @@ internal sealed class TrayApp : ApplicationContext
         Task.Run(() => AdbHelper.TryReverse(_settings.AdbPath, Protocol.Port));
 
         _server.Start();
+    }
+
+    private Form? _diagForm;
+    private Label? _diagLabel;
+    private readonly System.Windows.Forms.Timer _diagTimer = new() { Interval = 100 };
+
+    /// <summary>Small always-on-top box: where the app sent the pen vs where Windows put the pointer.</summary>
+    private void ToggleDiagnostics(bool on)
+    {
+        if (!on)
+        {
+            _diagTimer.Stop();
+            _diagForm?.Close();
+            _diagForm = null;
+            return;
+        }
+        _diagLabel = new Label { Dock = DockStyle.Fill, ForeColor = Color.Lime, Font = new Font("Consolas", 14f) };
+        _diagForm = new Form
+        {
+            FormBorderStyle = FormBorderStyle.None,
+            TopMost = true,
+            ShowInTaskbar = false,
+            StartPosition = FormStartPosition.Manual,
+            BackColor = Color.Black,
+            Size = new Size(620, 190),
+            Location = new Point(Screen.PrimaryScreen!.Bounds.Left + 40, Screen.PrimaryScreen!.Bounds.Top + 40),
+        };
+        _diagForm.Controls.Add(_diagLabel);
+        _diagForm.Show();
+        _diagTimer.Tick += (_, _) =>
+        {
+            var m = Screen.AllScreens[Math.Min(_settings.MonitorIndex, Screen.AllScreens.Length - 1)].Bounds;
+            _diagLabel.Text =
+                $"phone  x={_server.LastNx:0.000} y={_server.LastNy:0.000}\n" +
+                $"sent   px {_server.LastX},{_server.LastY}\n" +
+                $"cursor px {Cursor.Position.X},{Cursor.Position.Y}\n" +
+                $"monitor {m.Left},{m.Top} {m.Width}x{m.Height}";
+        };
+        _diagTimer.Start();
     }
 
     private void SetStatus(string text)

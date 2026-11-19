@@ -15,6 +15,10 @@ public sealed class PenServer
     public event Action<string>? Status;
     public bool IsConnected { get; private set; }
 
+    // Latest values, for the diagnostics window.
+    public volatile float LastNx, LastNy;
+    public volatile int LastX, LastY;
+
     public PenServer(AreaMapper mapper, Func<PressureCurve> curve)
     {
         _mapper = mapper;
@@ -80,6 +84,7 @@ public sealed class PenServer
 
             var p = Protocol.ParsePen(buf);
             var (x, y) = _mapper.Map(p.X, p.Y);
+            LastNx = p.X; LastNy = p.Y; LastX = x; LastY = y;
             uint pressure = p.InContact ? _curve().ToWindows(p.Pressure) : 0;
             pen.Update(x, y, p.InRange, p.InContact, pressure, p.TiltX, p.TiltY, p.Barrel, p.Eraser);
         }
